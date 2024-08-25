@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import Client from "./Client";
+import axios from "axios";
 import Editor from "./Editor";
 import { initSocket } from "../Socket";
 import { ACTIONS } from "../Actions";
+import "../App.css";
 import {
   useNavigate,
   useLocation,
@@ -10,20 +12,22 @@ import {
   useParams,
 } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import Output from "./Output";
 
 function EditorPage() {
+  const [code, setCode] = useState("");
+  const [output, setOutput] = useState("");
   const [clients, setClients] = useState([]);
-  const [isTeacher, setIsTeacher] = useState(false);
   const codeRef = useRef(null);
 
-  const Location = useLocation();
+  const location = useLocation();
   const navigate = useNavigate();
   const { roomId } = useParams();
-
   const socketRef = useRef(null);
 
-  const teacherId = Location.state?.teacherId;
-  const currentUsername = Location.state?.username;
+  const teacherId = location.state?.teacherId;
+  const currentUsername = location.state?.username;
+  const currentRole = location.state?.teacherId ? "teacher" : "student"; // Determine role based on teacherId
 
   useEffect(() => {
     const init = async () => {
@@ -40,9 +44,9 @@ function EditorPage() {
       socketRef.current.emit(ACTIONS.JOIN, {
         roomId,
         username: currentUsername,
+        role: currentRole, // Send the role when joining
       });
 
-      // Listen for new clients joining the chatroom
       socketRef.current.on(
         ACTIONS.JOINED,
         ({ clients, username, socketId }) => {
@@ -50,8 +54,6 @@ function EditorPage() {
             toast.success(`${username} joined the room.`);
           }
           setClients(clients);
-
-          // Sync code with new client
           socketRef.current.emit(ACTIONS.SYNC_CODE, {
             code: codeRef.current,
             socketId,
@@ -59,34 +61,23 @@ function EditorPage() {
         }
       );
 
-      // Listen for clients disconnecting
       socketRef.current.on(ACTIONS.DISCONNECTED, ({ socketId, username }) => {
         toast.success(`${username} left the room`);
-        setClients((prev) => {
-          return prev.filter((client) => client.socketId !== socketId);
-        });
+        setClients((prev) =>
+          prev.filter((client) => client.socketId !== socketId)
+        );
       });
     };
     init();
 
-    // Prompt for teacher confirmation
-    const enteredTeacherId = window.prompt("Enter Teacher ID to confirm:");
-    if (enteredTeacherId === teacherId) {
-      setIsTeacher(true);
-      toast.success("You are confirmed as the teacher.");
-    } else {
-      toast.error("You are not authorized to edit.");
-    }
-
-    // Cleanup on component unmount
     return () => {
       socketRef.current && socketRef.current.disconnect();
       socketRef.current.off(ACTIONS.JOINED);
       socketRef.current.off(ACTIONS.DISCONNECTED);
     };
-  }, [currentUsername, navigate, roomId, teacherId]);
+  }, [currentUsername, currentRole, navigate, roomId, teacherId]);
 
-  if (!Location.state) {
+  if (!location.state) {
     return <Navigate to="/" />;
   }
 
@@ -105,9 +96,8 @@ function EditorPage() {
   };
 
   return (
-    <div className="container-fluid vh-100">
+    <div className="container-fluid vh-100 scrollBar">
       <div className="row h-100">
-        {/* Client panel */}
         <div
           className="col-md-2 bg-dark text-light d-flex flex-column h-100"
           style={{ boxShadow: "2px 0px 4px rgba(0, 0, 0, 0.1)" }}
@@ -117,25 +107,19 @@ function EditorPage() {
             alt="Logo"
             className="img-fluid mx-auto"
             style={{ maxWidth: "150px", marginTop: "-43px" }}
-            />
-            {/* <p style={{
-              marginTop: "20px",
-              marginBottom:"20px"
-            }}>{currentUsername}</p> */}
-
-
+          />
           <hr style={{ marginTop: "-3rem" }} />
-
-          {/* Client list container */}
           <div className="d-flex flex-column flex-grow-1 overflow-auto">
             <span className="mb-2">Members</span>
             {clients.map((client) => (
-              <Client key={client.socketId} username={client.username} />
+              <Client
+                key={client.socketId}
+                username={client.username}
+                role={client.role}
+              />
             ))}
           </div>
-
           <hr />
-          {/* Buttons */}
           <div className="mt-auto">
             <button className="btn btn-success" onClick={copyRoomId}>
               Copy Room ID
@@ -148,17 +132,23 @@ function EditorPage() {
             </button>
           </div>
         </div>
-
-        {/* Editor panel */}
         <div className="col-md-10 text-light d-flex flex-column h-100">
-          <Editor
-            socketRef={socketRef}
-            roomId={roomId}
-            onCodeChange={(code) => {
-              codeRef.current = code;
-            }}
-            isEditable={isTeacher} // Only teacher can edit
-          />
+          <div className="editor-container">
+            <div className="editor-panel">
+              <Editor
+                socketRef={socketRef}
+                roomId={roomId}
+                setCode={setCode}
+                onCodeChange={(code) => {
+                  codeRef.current = code;
+                }}
+                isEditable={currentRole === "teacher"}
+              />
+            </div>
+            <div className="output-panel">
+              <Output output={output} />
+            </div>
+          </div>
         </div>
       </div>
     </div>

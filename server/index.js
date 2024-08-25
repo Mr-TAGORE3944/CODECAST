@@ -3,9 +3,33 @@ const app = express();
 const http = require("http");
 const { Server } = require("socket.io");
 const ACTIONS = require("./Actions");
+const cors = require("cors");
+const { generateFile } = require("./generateFile");
+const { executeJava } = require("./executeJava");
+
+app.use(cors());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+app.post("/run", async (req, res) => {
+  const { language = "java", code } = req.body;
+
+  if (code === undefined) {
+    return res.status(400).json({ success: false, error: "Empty code body!" });
+  }
+  try {
+    // Generate a Java file with content from the request
+    const filepath = await generateFile(language, code);
+    // Execute the file and send the response
+    const output = await executeJava(filepath);
+
+    return res.json({ filepath, output });
+  } catch (err) {
+    res.status(500).json({ err });
+  }
+});
 
 const server = http.createServer(app);
-
 const io = new Server(server);
 
 const userSocketMap = {};
@@ -14,19 +38,19 @@ const getAllConnectedClients = (roomId) => {
     (socketId) => {
       return {
         socketId,
-        username: userSocketMap[socketId],
+        username: userSocketMap[socketId]?.username,
+        role: userSocketMap[socketId]?.role,
       };
     }
   );
 };
 
 io.on("connection", (socket) => {
-  // console.log('Socket connected', socket.id);
-  socket.on(ACTIONS.JOIN, ({ roomId, username }) => {
-    userSocketMap[socket.id] = username;
+  socket.on(ACTIONS.JOIN, ({ roomId, username, role }) => {
+    userSocketMap[socket.id] = { username, role };
     socket.join(roomId);
+
     const clients = getAllConnectedClients(roomId);
-    // notify that new user join
     clients.forEach(({ socketId }) => {
       io.to(socketId).emit(ACTIONS.JOINED, {
         clients,
@@ -36,23 +60,20 @@ io.on("connection", (socket) => {
     });
   });
 
-  // sync the code
   socket.on(ACTIONS.CODE_CHANGE, ({ roomId, code }) => {
     socket.in(roomId).emit(ACTIONS.CODE_CHANGE, { code });
   });
-  // when new user join the room all the code which are there are also shows on that persons editor
+
   socket.on(ACTIONS.SYNC_CODE, ({ socketId, code }) => {
     io.to(socketId).emit(ACTIONS.CODE_CHANGE, { code });
   });
 
-  // leave room
   socket.on("disconnecting", () => {
     const rooms = [...socket.rooms];
-    // leave all the room
     rooms.forEach((roomId) => {
       socket.in(roomId).emit(ACTIONS.DISCONNECTED, {
         socketId: socket.id,
-        username: userSocketMap[socket.id],
+        username: userSocketMap[socket.id]?.username,
       });
     });
 
@@ -62,4 +83,4 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server is runnint on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server is running on port ${PORT}`));

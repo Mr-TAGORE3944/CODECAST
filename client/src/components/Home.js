@@ -27,7 +27,7 @@ function Home() {
     navigate(`/editor/${roomId}`, {
       state: {
         username,
-        teacherId
+        teacherId,
       },
     });
     toast.success("room is created");
@@ -105,11 +105,16 @@ function Home() {
               </p>
             </div>
           </div>
-            <p className="" style={{
-              textAlign:"center",
+          <p
+            className=""
+            style={{
+              textAlign: "center",
               color: "white",
-              fontSize: "2px"
-            }}>&copy; by EX-CODER Inc. All rights reserved</p>
+              fontSize: "2px",
+            }}
+          >
+            &copy; by EX-CODER Inc. All rights reserved
+          </p>
         </div>
       </div>
     </div>
