@@ -24,6 +24,8 @@ function EditorPage() {
   const navigate = useNavigate();
   const { roomId } = useParams();
   const socketRef = useRef(null);
+  const videoRef = useRef(null);
+  const peersRef = useRef({});
 
   const teacherId = location.state?.teacherId;
   const currentUsername = location.state?.username;
@@ -67,7 +69,77 @@ function EditorPage() {
           prev.filter((client) => client.socketId !== socketId)
         );
       });
+
+      // Video Conference Setup
+      const localStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      videoRef.current.srcObject = localStream;
+
+      socketRef.current.on(ACTIONS.OFFER, async ({ offer, from }) => {
+        const peerConnection = createPeerConnection(from);
+        await peerConnection.setRemoteDescription(
+          new RTCSessionDescription(offer)
+        );
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        socketRef.current.emit(ACTIONS.ANSWER, { answer, to: from });
+      });
+
+      socketRef.current.on(ACTIONS.ANSWER, async ({ answer, from }) => {
+        const peerConnection = peersRef.current[from];
+        await peerConnection.setRemoteDescription(
+          new RTCSessionDescription(answer)
+        );
+      });
+
+      socketRef.current.on(ACTIONS.ICE_CANDIDATE, ({ candidate, from }) => {
+        const peerConnection = peersRef.current[from];
+        peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      });
+
+      clients.forEach(({ socketId }) => {
+        if (socketId !== socketRef.current.id) {
+          const peerConnection = createPeerConnection(socketId);
+          localStream.getTracks().forEach((track) => {
+            peerConnection.addTrack(track, localStream);
+          });
+          peerConnection.createOffer().then((offer) => {
+            peerConnection.setLocalDescription(offer);
+            socketRef.current.emit(ACTIONS.OFFER, { offer, to: socketId });
+          });
+        }
+      });
     };
+
+    const createPeerConnection = (socketId) => {
+      const peerConnection = new RTCPeerConnection({
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      });
+
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          socketRef.current.emit(ACTIONS.ICE_CANDIDATE, {
+            candidate: event.candidate,
+            to: socketId,
+          });
+        }
+      };
+
+      peerConnection.ontrack = (event) => {
+        const remoteVideo = document.createElement("video");
+        remoteVideo.srcObject = event.streams[0];
+        remoteVideo.autoplay = true;
+        remoteVideo.playsInline = true;
+        remoteVideo.classList.add("remote-video");
+        document.getElementById("video-container").appendChild(remoteVideo);
+      };
+
+      peersRef.current[socketId] = peerConnection;
+      return peerConnection;
+    };
+
     init();
 
     return () => {
@@ -102,13 +174,23 @@ function EditorPage() {
           className="col-md-2 bg-dark text-light d-flex flex-column h-100"
           style={{ boxShadow: "2px 0px 4px rgba(0, 0, 0, 0.1)" }}
         >
-          <img
-            src="/images/codecast.png"
-            alt="Logo"
-            className="img-fluid mx-auto"
-            style={{ maxWidth: "150px", marginTop: "-43px" }}
-          />
-          <hr style={{ marginTop: "-3rem" }} />
+          <div className="flex justify-center items-center">
+            <img src="/images/user.gif" alt="" className="h-[20px] w-[20px]" />
+            <p className="text-red-500 text-[3px] ml-2 my-auto">
+              {currentUsername}
+            </p>
+          </div>
+          <div className="flex flex-row justify-center items-center gap-2">
+            <img src="/images/live.gif" alt="" className="h-[20px] w-[20px]" />
+            <img
+              src="/images/codecastIn.png"
+              alt="Logo"
+              height={50}
+              width={70}
+              className="img-fluid my-1 h-[50px]"
+            />
+          </div>
+          <hr style={{ marginTop: "-3rem" }} className="mt-1" />
           <div className="d-flex flex-column flex-grow-1 overflow-auto">
             <span className="mb-2">Members</span>
             {clients.map((client) => (
@@ -120,7 +202,7 @@ function EditorPage() {
             ))}
           </div>
           <hr />
-          <div className="mt-auto">
+          <div className="mt-auto flex flex-col">
             <button className="btn btn-success" onClick={copyRoomId}>
               Copy Room ID
             </button>
@@ -148,6 +230,15 @@ function EditorPage() {
             <div className="output-panel">
               <Output output={output} />
             </div>
+          </div>
+          <div id="video-container" className="video-container">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="local-video"
+            ></video>
           </div>
         </div>
       </div>

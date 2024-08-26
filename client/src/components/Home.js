@@ -54,7 +54,8 @@ function Home() {
               />
               <h4 className="card-title text-light mb-4">JOIN AS STUDENT</h4>
 
-              <div className="form-group">
+              <div className="form-group flex gap-1">
+                <img src="images/id.gif" alt="" className="h-[30px] w-[30px]" />
                 <input
                   type="text"
                   value={roomId}
@@ -64,7 +65,13 @@ function Home() {
                   onKeyUp={handleInputEnter}
                 />
               </div>
-              <div className="form-group">
+              <div className="form-group flex gap-1">
+                <img
+                  src="images/user.gif"
+                  alt=""
+                  className="h-[30px] w-[30px]"
+                />
+
                 <input
                   type="text"
                   value={username}
@@ -74,9 +81,15 @@ function Home() {
                   onKeyUp={handleInputEnter}
                 />
               </div>
-              <h4 className="card-title text-light mb-4">JOIN AS TEACHER</h4>
+              <h4 className="card-title text-light mb-4 ">JOIN AS TEACHER</h4>
 
-              <div className="form-group">
+              <div className="form-group flex gap-1">
+                <img
+                  src="images/teacher.gif"
+                  alt=""
+                  className="h-[30px] w-[30px]"
+                />
+
                 <input
                   type="text"
                   value={teacherId}
@@ -88,11 +101,17 @@ function Home() {
               </div>
               <button
                 onClick={joinRoom}
-                className="btn btn-success btn-lg btn-block"
+                className=" flex gap-2 flex-row justify-center  mx-auto rounded-md"
               >
-                JOIN
+                <img src="/images/enter.gif" className="h-[80px] width-[150px]" />
+                
               </button>
-              <p className="mt-3 text-light">
+              <p className="mt-3 text-light flex gap-1 justify-center items-center">
+                <img
+                  src="images/wrong.gif"
+                  alt=""
+                  className="h-[30px] w-[30px]"
+                />
                 Don't have a room ID? create{" "}
                 <span
                   onClick={generateRoomId}

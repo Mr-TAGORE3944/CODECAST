@@ -68,6 +68,19 @@ io.on("connection", (socket) => {
     io.to(socketId).emit(ACTIONS.CODE_CHANGE, { code });
   });
 
+  // WebRTC Signaling Handlers
+  socket.on(ACTIONS.OFFER, ({ offer, to }) => {
+    io.to(to).emit(ACTIONS.OFFER, { offer, from: socket.id });
+  });
+
+  socket.on(ACTIONS.ANSWER, ({ answer, to }) => {
+    io.to(to).emit(ACTIONS.ANSWER, { answer, from: socket.id });
+  });
+
+  socket.on(ACTIONS.ICE_CANDIDATE, ({ candidate, to }) => {
+    io.to(to).emit(ACTIONS.ICE_CANDIDATE, { candidate, from: socket.id });
+  });
+
   socket.on("disconnecting", () => {
     const rooms = [...socket.rooms];
     rooms.forEach((roomId) => {

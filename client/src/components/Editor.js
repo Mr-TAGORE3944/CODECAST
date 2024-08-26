@@ -11,7 +11,7 @@ function Editor({ socketRef, roomId, onCodeChange, isEditable }) {
   const editorRef = useRef(null);
 
   useEffect(() => {
-    const init = async () => {
+    const init = () => {
       const editor = CodeMirror.fromTextArea(
         document.getElementById("realtimeEditor"),
         {

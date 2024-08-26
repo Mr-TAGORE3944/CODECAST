@@ -7,7 +7,7 @@ function Client({ username, role }) {
 
   return (
     <div className="d-flex align-items-center mb-3">
-      <Avatar name={username} size={50} round="14px" className="mr-3" />
+      <Avatar name={username} size={30} round="10px" className="mr-3" />
       <span
         className={isTeacher ? "text-success font-weight-bold" : "text-light"}
       >
