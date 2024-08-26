@@ -231,13 +231,15 @@ function EditorPage() {
               <Output output={output} />
             </div>
           </div>
-          <div id="video-container" className="video-container">
+          <div id="video-container" className="video-container absolute top-0 right-0 rounded-md">
             <video
               ref={videoRef}
               autoPlay
               playsInline
               muted
               className="local-video"
+              height={150}
+              width={200}
             ></video>
           </div>
         </div>
